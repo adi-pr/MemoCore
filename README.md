@@ -16,6 +16,11 @@ It uses local embeddings and language models to let you query your own knowledge
 
 ---
 
+## Usage
+
+
+---
+
 ## Architecture
 
 MemoCore follows a simple pipeline:
