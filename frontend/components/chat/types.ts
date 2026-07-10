@@ -1,11 +1,9 @@
-import type { ReactNode } from "react"
-
 export type MessageRole = "user" | "assistant"
 
-export interface ChatMessageData {
+export interface Message {
   id: string
   role: MessageRole
-  name: string
-  timestamp: string
-  content: ReactNode
+  content: string
+  timestamp?: string
+  isError?: boolean
 }

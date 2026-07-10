@@ -1,8 +1,10 @@
 "use client"
 
+import * as React from "react"
 import {
   Eraser,
   FileUp,
+  Loader2,
   Mic,
   Paperclip,
   Search,
@@ -38,15 +40,43 @@ const TOOLBAR_ACTIONS: ToolbarAction[] = [
 interface ChatComposerProps {
   value: string
   onChange: (value: string) => void
+  onSend: () => void
+  /** Disables typing. Should only be true while a response is actively streaming. */
+  disabled?: boolean
+  /** Whether sending is currently allowed (e.g. has text, not streaming, backend ready). */
+  canSend: boolean
+  isStreaming?: boolean
+  textareaRef?: React.Ref<HTMLTextAreaElement>
 }
 
-export function ChatComposer({ value, onChange }: ChatComposerProps) {
+export function ChatComposer({
+  value,
+  onChange,
+  onSend,
+  disabled,
+  canSend,
+  isStreaming,
+  textareaRef,
+}: ChatComposerProps) {
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault()
+      if (canSend) {
+        onSend()
+      }
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-3xl">
       <div className="rounded-2xl border border-border bg-card shadow-sm transition-shadow focus-within:shadow-md">
         <Textarea
+          ref={textareaRef}
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
           placeholder="Ask MemoCore anything about your knowledge base..."
           className="min-h-[56px] resize-none border-none bg-transparent px-4 py-3.5 shadow-none focus-visible:ring-0"
         />
@@ -99,8 +129,19 @@ export function ChatComposer({ value, onChange }: ChatComposerProps) {
               </SelectContent>
             </Select>
 
-            <Button type="button" size="icon" className="rounded-full" aria-label="Send message">
-              <Send className="size-4" />
+            <Button
+              type="button"
+              size="icon"
+              className="rounded-full"
+              aria-label={isStreaming ? "Sending message" : "Send message"}
+              disabled={!canSend}
+              onClick={onSend}
+            >
+              {isStreaming ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Send className="size-4" />
+              )}
             </Button>
           </div>
         </div>
