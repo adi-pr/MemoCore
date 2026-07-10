@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
 import {
   Brain,
   MessageSquarePlus,
@@ -63,23 +64,23 @@ function NavItem({
   collapsed,
   active,
   trailing,
+  href,
 }: {
   icon: React.ElementType
   label: string
   collapsed: boolean
   active?: boolean
   trailing?: React.ReactNode
+  href?: string
 }) {
-  return (
-    <button
-      type="button"
-      title={collapsed ? label : undefined}
-      className={cn(
-        "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground",
-        collapsed && "justify-center px-0",
-        active && "bg-muted font-medium text-foreground"
-      )}
-    >
+  const className = cn(
+    "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground",
+    collapsed && "justify-center px-0",
+    active && "bg-muted font-medium text-foreground"
+  )
+
+  const content = (
+    <>
       <Icon
         className={cn(
           "size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground",
@@ -88,6 +89,20 @@ function NavItem({
       />
       {!collapsed && <span className="flex-1 truncate text-left">{label}</span>}
       {!collapsed && trailing}
+    </>
+  )
+
+  if (href) {
+    return (
+      <Link href={href} title={collapsed ? label : undefined} className={className}>
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <button type="button" title={collapsed ? label : undefined} className={className}>
+      {content}
     </button>
   )
 }
@@ -104,6 +119,7 @@ function SectionLabel({ children, collapsed }: { children: React.ReactNode; coll
 export function SidebarClient({ user }: { user: SidebarUser }) {
   const [collapsed, setCollapsed] = React.useState(false)
   const router = useRouter()
+  const pathname = usePathname()
 
   function handleSignOut() {
     authClient.signOut({
@@ -158,6 +174,7 @@ export function SidebarClient({ user }: { user: SidebarUser }) {
         )}
 
         <Button
+          render={<Link href="/dashboard" />}
           className={cn("w-full justify-start gap-2", collapsed && "justify-center px-0")}
           title={collapsed ? "New Chat" : undefined}
         >
@@ -194,6 +211,8 @@ export function SidebarClient({ user }: { user: SidebarUser }) {
             icon={Database}
             label="Knowledge Bases"
             collapsed={collapsed}
+            href="/knowledge-bases"
+            active={pathname.startsWith("/knowledge-bases")}
             trailing={<ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
           />
         </div>
