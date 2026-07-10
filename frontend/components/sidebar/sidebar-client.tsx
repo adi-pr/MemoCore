@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import {
   Brain,
   MessageSquarePlus,
@@ -13,13 +14,24 @@ import {
   Settings,
   PanelLeft,
   PanelLeftClose,
+  LogOut,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const CONVERSATIONS = [
   { id: "api-documentation", title: "API Documentation" },
@@ -91,6 +103,17 @@ function SectionLabel({ children, collapsed }: { children: React.ReactNode; coll
 
 export function SidebarClient({ user }: { user: SidebarUser }) {
   const [collapsed, setCollapsed] = React.useState(false)
+  const router = useRouter()
+
+  function handleSignOut() {
+    authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push("/sign-in")
+        },
+      },
+    })
+  }
 
   return (
     <aside
@@ -194,20 +217,40 @@ export function SidebarClient({ user }: { user: SidebarUser }) {
       <Separator />
 
       {/* User profile */}
-      <div className={cn("flex shrink-0 items-center gap-2.5 p-3", collapsed && "justify-center")}>
-        <Avatar>
-          {user.image && <AvatarImage src={user.image} alt={user.name} />}
-          <AvatarFallback>{user.initials}</AvatarFallback>
-        </Avatar>
-        {!collapsed && (
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate text-sm font-medium text-foreground">{user.name}</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className={cn(
+            "flex w-full shrink-0 items-center gap-2.5 p-3 text-left transition-colors hover:bg-muted",
+            collapsed && "justify-center"
+          )}
+        >
+          <Avatar>
+            {user.image && <AvatarImage src={user.image} alt={user.name} />}
+            <AvatarFallback>{user.initials}</AvatarFallback>
+          </Avatar>
+          {!collapsed && (
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm font-medium text-foreground">{user.name}</span>
+              {user.email && (
+                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+              )}
+            </div>
+          )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align={collapsed ? "center" : "start"} className="w-56">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
             {user.email && (
-              <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+              <DropdownMenuLabel className="-mt-2 font-normal">{user.email}</DropdownMenuLabel>
             )}
-          </div>
-        )}
-      </div>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
+            <LogOut className="size-4" />
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </aside>
   )
 }
