@@ -48,6 +48,7 @@ docker compose -f docker/docker-compose.yml up -d
 This starts:
 
 - Ollama on port `11434`
+- ChromaDB on port `8000`
 
 ## Run the API
 
