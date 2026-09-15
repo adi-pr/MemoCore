@@ -1,4 +1,5 @@
 from uuid import UUID
+import httpx
 
 from app.db.repositories.repositories import (
     create_repository as db_create_repository,
@@ -17,9 +18,39 @@ from app.schema.repositories import (
 def create_repository(
     data: RepositoryCreate,
 ):
+    github_url = (
+        f"https://api.github.com/repos/{data.full_name}"
+    )
+
+    response = httpx.get(
+        github_url,
+        timeout=10.0,
+    )
+
+    if response.status_code == 404:
+        raise ValueError(
+            "GitHub repository not found"
+        )
+
+    if response.status_code != 200:
+        raise ValueError(
+            "Failed to fetch repository from GitHub"
+        )
+
+    github_repo = response.json()
+
+    # Use canonical data from GitHub
+    provider = "github"
+    external_id = str(github_repo["id"])
+    name = github_repo["name"]
+    full_name = github_repo["full_name"]
+    clone_url = github_repo["clone_url"]
+    default_branch = github_repo["default_branch"]
+
+    # Check if repository already exists
     existing = db_get_repository_by_full_name(
-        provider=data.provider,
-        full_name=data.full_name,
+        provider=provider,
+        full_name=full_name,
     )
 
     if existing:
@@ -27,13 +58,14 @@ def create_repository(
             "Repository already exists"
         )
 
+    # Save repository in Supabase
     return db_create_repository(
-        provider=data.provider,
-        external_id=data.external_id,
-        name=data.name,
-        full_name=data.full_name,
-        clone_url=str(data.clone_url),
-        default_branch=data.default_branch,
+        provider=provider,
+        external_id=external_id,
+        name=name,
+        full_name=full_name,
+        clone_url=clone_url,
+        default_branch=default_branch,
     )
 
 def get_repositories():

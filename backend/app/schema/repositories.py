@@ -5,13 +5,6 @@ from pydantic import BaseModel, Field, HttpUrl
 
 
 class RepositoryCreate(BaseModel):
-    provider: str = Field(
-        ...,
-        min_length=1,
-        max_length=50,
-    )
-
-    external_id: str | None = None
 
     name: str = Field(
         ...,
