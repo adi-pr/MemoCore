@@ -13,6 +13,7 @@ from app.db.repositories.sync_jobs import (
     mark_sync_job_running,
     mark_sync_job_completed,
     mark_sync_job_failed,
+    update_sync_job_progress,
 )
 
 from app.db.repositories.versions import (
@@ -24,6 +25,15 @@ from app.services.git import (
     clone_repository,
     get_commit_sha,
     get_commit_message,
+)
+
+from app.db.repositories.documents import (
+    create_document,
+)
+
+from app.services.discovery import (
+    discover_markdown_files,
+    extract_title,
 )
 
 
@@ -71,7 +81,7 @@ def process_sync_job(
             repo_path
         )
 
-        existing_version = (
+        version = (
             get_repository_version(
                 repository_id=UUID(
                     repository["id"]
@@ -80,8 +90,8 @@ def process_sync_job(
             )
         )
 
-        if not existing_version:
-            create_repository_version(
+        if not version:
+            version = create_repository_version(
                 repository_id=UUID(
                     repository["id"]
                 ),
@@ -92,6 +102,34 @@ def process_sync_job(
                 commit_message=commit_message,
             )
 
+        repo_files = discover_markdown_files(repo_path)
+
+        update_sync_job_progress(
+            job_id=job_id,
+            files_discovered=len(repo_files),
+        )
+
+        files_processed = 0
+
+        for file in repo_files:
+            create_document(
+                repository_id=UUID(repository["id"]),
+                repository_version_id=UUID(version["id"]),
+                path=file["path"],
+                filename=file["filename"],
+                content=file["content"],
+                title=extract_title(file["content"]),
+                language="markdown",
+                file_size=file["file_size"],
+            )
+
+            files_processed =+ 1
+
+            update_sync_job_progress(
+                job_id=job_id,
+                files_processed=files_processed
+            )
+        
         mark_sync_job_completed(
             job_id=job_id,
             commit_sha=commit_sha,
