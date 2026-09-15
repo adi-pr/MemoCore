@@ -21,14 +21,22 @@ from app.db.repositories.versions import (
     get_repository_version,
 )
 
+from app.db.repositories.documents import (
+    create_document,
+)
+
+from app.db.repositories.chunks import (
+    create_chunks,
+)
+
+from app.services.chunking import (
+    chunk_document,
+)
+
 from app.services.git import (
     clone_repository,
     get_commit_sha,
     get_commit_message,
-)
-
-from app.db.repositories.documents import (
-    create_document,
 )
 
 from app.services.discovery import (
@@ -110,9 +118,10 @@ def process_sync_job(
         )
 
         files_processed = 0
+        total_chunks_created = 0
 
         for file in repo_files:
-            create_document(
+            document = create_document(
                 repository_id=UUID(repository["id"]),
                 repository_version_id=UUID(version["id"]),
                 path=file["path"],
@@ -123,11 +132,21 @@ def process_sync_job(
                 file_size=file["file_size"],
             )
 
+            chunks = chunk_document(file["content"])
+
+            create_chunks(
+                document_id=UUID(document["id"]),
+                repository_version_id=UUID(version["id"]),
+                chunks=chunks
+            )
+
+            total_chunks_created += len(chunks)
             files_processed =+ 1
 
             update_sync_job_progress(
                 job_id=job_id,
-                files_processed=files_processed
+                files_processed=files_processed,
+                chunks_created=total_chunks_created
             )
         
         mark_sync_job_completed(
