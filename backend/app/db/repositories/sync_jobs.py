@@ -191,3 +191,27 @@ def mark_sync_job_failed(
         return None
 
     return response.data[0]
+
+def get_pending_sync_job():
+    supabase = get_supabase()
+
+    response = (
+        supabase
+        .table("sync_jobs")
+        .select("*")
+        .eq(
+            "status",
+            "pending",
+        )
+        .order(
+            "created_at",
+            desc=False,
+        )
+        .limit(1)
+        .execute()
+    )
+
+    if not response.data:
+        return None
+
+    return response.data[0]
