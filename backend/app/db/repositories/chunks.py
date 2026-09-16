@@ -1,4 +1,5 @@
 from uuid import UUID
+from typing import Any
 
 from app.db.supabase import get_supabase
 
@@ -56,3 +57,47 @@ def replace_document_chunks(
 
 
 create_chunks = replace_document_chunks
+
+def get_all_chunks() -> list[dict[str, Any]]:
+
+    supabase = get_supabase()
+
+    response = (
+        supabase
+        .table("document_chunks")
+        .select(
+            """
+            id,
+            document_id,
+            repository_version_id,
+            content,
+            heading_path,
+            documents!inner(
+                repository_id,
+                path
+            )
+            """
+        )
+        .execute()
+    )
+
+    chunks: list[dict[str, Any]] = []
+
+    for row in response.data or []:
+        document = row["documents"]
+
+        chunks.append(
+            {
+                "id": row["id"],
+                "document_id": row["document_id"],
+                "repository_id": document["repository_id"],
+                "repository_version_id": (
+                    row["repository_version_id"]
+                ),
+                "file_path": document["path"],
+                "heading_path": row.get("heading_path"),
+                "content": row["content"],
+            }
+        )
+
+    return chunks
