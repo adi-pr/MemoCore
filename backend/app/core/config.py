@@ -10,16 +10,22 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_key: str
 
-    ollama_host: str
-    lmstudio_host: str
+    model_timeout_seconds: float = 60.0
+    
+    ollama_host: str = "http://localhost:11434"
+    lmstudio_host: str = "http://localhost:1234"
 
+    embedding_provider: str = "ollama"
     embedding_model: str = "nomic-embed-text"
+    embedding_dimension: int = 1536
+
     llm_model: str = "gpt-4.1-mini"
 
     chunk_size: int = 1000
     chunk_overlap: int = 200
 
     retrieval_top_k: int = 5
+
 
     model_config = SettingsConfigDict(
         env_file=".env",
