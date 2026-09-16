@@ -1,5 +1,3 @@
-# app/db/repositories/documents.py
-
 import hashlib
 from uuid import UUID
 
