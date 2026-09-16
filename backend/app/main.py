@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.routes import health, repositories, sync_jobs
+from app.api.routes import health, repositories, sync_jobs, search
 from app.core.logging import setup_logging
 
 setup_logging()
@@ -15,6 +15,8 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(repositories.router, prefix="/repositories")
 app.include_router(sync_jobs.router)
+app.include_router(search.router, prefix="/search")
+
 # app.include_router(documents.router, prefix="/api")
 # app.include_router(chat.router, prefix="/api")
 
