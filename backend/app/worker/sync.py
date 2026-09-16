@@ -141,7 +141,7 @@ def process_sync_job(
             )
 
             total_chunks_created += len(chunks)
-            files_processed =+ 1
+            files_processed += 1
 
             update_sync_job_progress(
                 job_id=job_id,
