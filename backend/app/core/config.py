@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     embedding_provider: str = "ollama"
     embedding_model: str = "nomic-embed-text"
-    embedding_dimension: int = 1536
+    embedding_dimension: int = 768
 
     llm_model: str = "gpt-4.1-mini"
 

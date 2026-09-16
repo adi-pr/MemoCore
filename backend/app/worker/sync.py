@@ -19,7 +19,9 @@ from app.db.repositories.versions import (
 )
 from app.db.repositories.documents import upsert_document
 from app.db.repositories.chunks import replace_document_chunks
+from app.db.repositories.embeddings import create_embedding
 
+from app.services.embeddings import embed_text
 from app.services.chunking import chunk_document
 from app.services.discovery import (
     discover_markdown_files,
@@ -122,11 +124,24 @@ def process_sync_job(job_id: UUID) -> dict:
                 file_info["content"]
             )
 
-            replace_document_chunks(
+            created_chunks = replace_document_chunks(
                 document_id=document_id,
                 repository_version_id=version_id,
                 chunks=chunks,
             )
+
+            embeddings_created = 0
+
+            for created_chunk in created_chunks:
+
+                vector = embed_text(created_chunk["content"])
+
+                create_embedding(
+                    chunk_id=UUID(created_chunk["id"]),
+                    embedding=vector
+                )
+
+                embeddings_created += 1
 
             files_processed += 1
             chunks_created += len(chunks)
@@ -135,6 +150,7 @@ def process_sync_job(job_id: UUID) -> dict:
                 job_id,
                 files_processed=files_processed,
                 chunks_created=chunks_created,
+                embeddings_created=embeddings_created,
             )
 
             logger.info(
