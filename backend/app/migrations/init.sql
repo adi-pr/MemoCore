@@ -427,3 +427,7 @@ CREATE TRIGGER documents_updated_at
 BEFORE UPDATE ON documents
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
+
+ALTER TABLE documents
+ADD CONSTRAINT documents_version_path_unique
+UNIQUE (repository_version_id, path);
