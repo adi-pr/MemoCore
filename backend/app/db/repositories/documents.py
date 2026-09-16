@@ -1,10 +1,11 @@
+# app/db/repositories/documents.py
+
 import hashlib
 from uuid import UUID
 
 from app.db.supabase import get_supabase
 
-
-def create_document(
+def upsert_document(
     repository_id: UUID,
     repository_version_id: UUID,
     path: str,
@@ -14,34 +15,40 @@ def create_document(
     language: str = "markdown",
     file_size: int | None = None,
 ):
-    supabase = get_supabase()
-
     content_hash = hashlib.sha256(
         content.encode("utf-8")
     ).hexdigest()
 
+    data = {
+        "repository_id": str(repository_id),
+        "repository_version_id": str(
+            repository_version_id
+        ),
+        "path": path,
+        "filename": filename,
+        "title": title,
+        "content": content,
+        "content_hash": content_hash,
+        "language": language,
+        "file_size": file_size,
+    }
+
     response = (
-        supabase
+        get_supabase()
         .table("documents")
-        .insert({
-            "repository_id": str(repository_id),
-            "repository_version_id": str(
-                repository_version_id
-            ),
-            "path": path,
-            "filename": filename,
-            "title": title,
-            "content": content,
-            "content_hash": content_hash,
-            "language": language,
-            "file_size": file_size,
-        })
+        .upsert(
+            data,
+            on_conflict="repository_version_id,path",
+        )
         .execute()
     )
 
     if not response.data:
         raise RuntimeError(
-            f"Failed to create document: {path}"
+            f"Failed to upsert document: {path}"
         )
 
     return response.data[0]
+
+
+create_document = upsert_document
