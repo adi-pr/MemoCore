@@ -34,7 +34,7 @@ async def search(request: SearchRequest):
             ),
         )
 
-        # return unbed_res
+        return sparse_res
 
     except Exception as exc:
         raise HTTPException(
