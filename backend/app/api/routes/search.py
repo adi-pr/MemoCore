@@ -22,17 +22,20 @@ async def search(request: SearchRequest):
                 sparse_search,
                 query_raw=request.query,
                 chunks=chunks_unbed,
-                limit=request.limit,
+                limit=request.top_k,
                 repository_id=request.repository_id,
             ),
             asyncio.to_thread(
                 dense_search_chunks,
                 query_embedding=query_embedding,
                 chunks=chunks,
-                limit=request.limit,
+                limit=request.top_k,
                 repository_id=request.repository_id,
             ),
         )
+
+        for item in sparse_res:
+            print(item["content"])
 
         return sparse_res
 
