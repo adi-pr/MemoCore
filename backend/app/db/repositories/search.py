@@ -56,3 +56,56 @@ def get_all_embedded_chunks() -> list[dict[str, Any]]:
         )
 
     return results
+
+def get_all_chunks() -> list[dict[str, Any]]:
+    supabase = get_supabase()
+
+    response = (
+        supabase
+        .table("document_chunks")
+        .select(
+            """
+            id,
+            document_id,
+            repository_version_id,
+            chunk_index,
+            content,
+            content_hash,
+            token_count,
+            heading_path,
+            start_line,
+            end_line,
+            metadata,
+            documents!inner(
+                repository_id,
+                path
+            )
+            """
+        )
+        .execute()
+    )
+
+    results: list[dict[str, Any]] = []
+
+    for row in response.data or []:
+        document = row["documents"]
+
+        results.append(
+            {
+                "chunk_id": row["id"],
+                "document_id": row["document_id"],
+                "repository_id": document["repository_id"],
+                "repository_version_id": row["repository_version_id"],
+                "chunk_index": row["chunk_index"],
+                "file_path": document["path"],
+                "content": row["content"],
+                "content_hash": row["content_hash"],
+                "token_count": row["token_count"],
+                "heading_path": row["heading_path"],
+                "start_line": row["start_line"],
+                "end_line": row["end_line"],
+                "metadata": row["metadata"],
+            }
+        )
+
+    return results
