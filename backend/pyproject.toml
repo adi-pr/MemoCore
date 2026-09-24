@@ -1,0 +1,29 @@
+[project]
+name = "memo-core-backend"
+version = "0.1.0"
+description = "Document RAG API using FastAPI, Supabase, embeddings and an LLM."
+readme = "./README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.141.1",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "supabase>=2.31.0",
+    "httpx>=0.28.1",
+    "tiktoken>=0.14.0",
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=6.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.fastapi]
+entrypoint = "app.main:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
