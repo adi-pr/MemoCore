@@ -1,81 +1,151 @@
-import { Send } from "lucide-react"
+"use client"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import * as React from "react"
+import {
+  Eraser,
+  FileUp,
+  Loader2,
+  Mic,
+  Paperclip,
+  Search,
+  Send,
+  type LucideIcon,
+} from "lucide-react"
 
-type ChatComposerProps = {
-  input: string
-  onInputChange: (value: string) => void
-  onSubmit: (e: React.FormEvent) => void
-  isStreaming: boolean
-  topK: number
-  onTopKChange: (value: number) => void
-  responseMode: "stream" | "standard"
-  onResponseModeChange: (value: "stream" | "standard") => void
+import { cn } from "@/lib/utils"
+import { buttonVariants, Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+
+interface ToolbarAction {
+  label: string
+  icon: LucideIcon
+}
+
+const TOOLBAR_ACTIONS: ToolbarAction[] = [
+  { label: "Attach file", icon: Paperclip },
+  { label: "Upload document", icon: FileUp },
+  { label: "Voice input", icon: Mic },
+  { label: "Search knowledge base", icon: Search },
+  { label: "Clear conversation", icon: Eraser },
+]
+
+interface ChatComposerProps {
+  value: string
+  onChange: (value: string) => void
+  onSend: () => void
+  /** Disables typing. Should only be true while a response is actively streaming. */
+  disabled?: boolean
+  /** Whether sending is currently allowed (e.g. has text, not streaming, backend ready). */
+  canSend: boolean
+  isStreaming?: boolean
+  textareaRef?: React.Ref<HTMLTextAreaElement>
 }
 
 export function ChatComposer({
-  input,
-  onInputChange,
-  onSubmit,
+  value,
+  onChange,
+  onSend,
+  disabled,
+  canSend,
   isStreaming,
-  topK,
-  onTopKChange,
-  responseMode,
-  onResponseModeChange,
+  textareaRef,
 }: ChatComposerProps) {
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault()
+      if (canSend) {
+        onSend()
+      }
+    }
+  }
+
   return (
-    <div className="border-t bg-background px-4 py-4">
-      <form onSubmit={onSubmit} className="mx-auto flex max-w-3xl flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <div className="inline-flex rounded-full border border-border p-1">
-            <Button
-              type="button"
-              variant={responseMode === "stream" ? "default" : "ghost"}
-              size="xs"
-              onClick={() => onResponseModeChange("stream")}
-              disabled={isStreaming}
-            >
-              Stream
-            </Button>
-            <Button
-              type="button"
-              variant={responseMode === "standard" ? "default" : "ghost"}
-              size="xs"
-              onClick={() => onResponseModeChange("standard")}
-              disabled={isStreaming}
-            >
-              Standard
-            </Button>
+    <div className="mx-auto w-full max-w-3xl">
+      <div className="rounded-2xl border border-border bg-card shadow-sm transition-shadow focus-within:shadow-md">
+        <Textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder="Ask MemoCore anything about your knowledge base..."
+          className="min-h-[56px] resize-none border-none bg-transparent px-4 py-3.5 shadow-none focus-visible:ring-0"
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 px-2.5 py-2">
+          <div className="flex items-center gap-0.5">
+            {TOOLBAR_ACTIONS.map(({ label, icon: Icon }) => (
+              <Tooltip key={label}>
+                <TooltipTrigger
+                  aria-label={label}
+                  className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
+                >
+                  <Icon className="size-4" />
+                </TooltipTrigger>
+                <TooltipContent>{label}</TooltipContent>
+              </Tooltip>
+            ))}
           </div>
 
-          <label className="flex items-center gap-2">
-            <span>Top K</span>
-            <Input
-              type="number"
-              min={1}
-              max={12}
-              value={topK}
-              onChange={(e) => onTopKChange(Number(e.target.value) || 4)}
-              disabled={isStreaming}
-              className="h-8 w-20"
-            />
-          </label>
-        </div>
+          <div className="flex items-center gap-1.5">
+            <Select defaultValue="semantic">
+              <SelectTrigger size="sm" className="text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="semantic">Semantic Search</SelectItem>
+                <SelectItem value="hybrid">Hybrid Search</SelectItem>
+                <SelectItem value="keyword">Keyword Search</SelectItem>
+              </SelectContent>
+            </Select>
 
-        <div className="flex gap-2">
-          <Input
-            value={input}
-            onChange={(e) => onInputChange(e.target.value)}
-            placeholder="Ask a question about the selected knowledge base..."
-            disabled={isStreaming}
-            className="flex-1 tab-index-0"
-          />
-          <Button type="submit" disabled={!input.trim() || isStreaming} size="icon">
-            <Send className="h-4 w-4" />
-          </Button>
+            <Select defaultValue="streaming">
+              <SelectTrigger size="sm" className="text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="streaming">Streaming</SelectItem>
+                <SelectItem value="standard">Standard</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select defaultValue="5">
+              <SelectTrigger size="sm" className="w-[68px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3">Top 3</SelectItem>
+                <SelectItem value="5">Top 5</SelectItem>
+                <SelectItem value="10">Top 10</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              type="button"
+              size="icon"
+              className="rounded-full"
+              aria-label={isStreaming ? "Sending message" : "Send message"}
+              disabled={!canSend}
+              onClick={onSend}
+            >
+              {isStreaming ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Send className="size-4" />
+              )}
+            </Button>
+          </div>
         </div>
-      </form>
+      </div>
     </div>
   )
 }

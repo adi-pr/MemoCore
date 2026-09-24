@@ -1,16 +1,11 @@
-import { Geist_Mono, Figtree } from "next/font/google"
-
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
+import { Geist, Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
-import { KnowledgeBaseProvider } from "@/components/knowledge-base-provider"
-import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils";
 
-const figtree = Figtree({subsets:['latin'],variable:'--font-sans'})
+const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
@@ -26,22 +21,11 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", figtree.variable)}
+      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
       <body>
         <ThemeProvider>
-          <Toaster richColors />
-          <KnowledgeBaseProvider>
-            <SidebarProvider>
-              <TooltipProvider>
-                <AppSidebar/>
-                <main className="flex flex-col flex-1 min-w-0 h-svh">
-                  <SidebarTrigger className="m-2 shrink-0"/>
-                  {children}
-                </main>
-              </TooltipProvider>
-            </SidebarProvider>
-          </KnowledgeBaseProvider>
+          <TooltipProvider delay={300}>{children}</TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

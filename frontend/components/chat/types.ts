@@ -1,8 +1,9 @@
-import type { Source } from "@/lib/api"
+export type MessageRole = "user" | "assistant"
 
-export type Message = {
-  id: number
-  role: "user" | "assistant"
+export interface Message {
+  id: string
+  role: MessageRole
   content: string
-  sources?: Source[] | null
+  timestamp?: string
+  isError?: boolean
 }
