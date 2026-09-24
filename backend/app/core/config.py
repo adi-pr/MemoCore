@@ -26,6 +26,10 @@ class Settings(BaseSettings):
 
     retrieval_top_k: int = 5
 
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2"
+    # Each retriever returns top_k * this many candidates for the reranker.
+    rerank_candidate_multiplier: int = 4
+
 
     model_config = SettingsConfigDict(
         env_file=".env",
