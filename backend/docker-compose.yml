@@ -1,0 +1,37 @@
+x-backend: &backend
+  build:
+    context: .
+    args:
+      APP_UID: ${APP_UID:-1000}
+      APP_GID: ${APP_GID:-1000}
+  image: memo-core-backend
+  env_file: .env
+  restart: unless-stopped
+
+services:
+  api:
+    <<: *backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Reranker model cache, so it is downloaded once.
+      - hf-cache:/home/app/.cache/huggingface
+
+  worker:
+    <<: *backend
+    # The worker handles one pending job per run, so poll it.
+    command:
+      - sh
+      - -c
+      - while true; do python -m app.worker.sync; sleep "$${SYNC_POLL_SECONDS:-10}"; done
+    healthcheck:
+      disable: true
+    secrets:
+      - github_deploy_key
+
+secrets:
+  github_deploy_key:
+    file: ${GITHUB_DEPLOY_KEY_FILE:-${HOME}/.ssh/memo_deploy_key}
+
+volumes:
+  hf-cache:
