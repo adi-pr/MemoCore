@@ -1,4 +1,5 @@
 import "server-only"
+import { PHASE_PRODUCTION_BUILD } from "next/constants"
 import { z } from "zod"
 
 // Base URLs are stored without a trailing slash so paths can be appended.
@@ -13,6 +14,10 @@ const envSchema = z.object({
   LMSTUDIO_HOST: baseUrl,
   LLM_MODEL: z.string().min(1),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+  BETTER_AUTH_SECRET: z
+    .string()
+    .min(32, "Use at least 32 characters: openssl rand -base64 32"),
+  BETTER_AUTH_URL: baseUrl,
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -29,4 +34,19 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
   return result.data
 }
 
-export const env = parseEnv(process.env)
+// next build imports server modules to collect page data but never serves
+// a request, so it gets placeholders instead of runtime config (e.g. in a
+// Docker build). The server validates the real values at startup.
+const BUILD_PLACEHOLDERS: Env = {
+  API_URL: "http://build.invalid",
+  LMSTUDIO_HOST: "http://build.invalid",
+  LLM_MODEL: "build-placeholder",
+  DATABASE_URL: "postgres://build.invalid/build",
+  BETTER_AUTH_SECRET: "build-placeholder-secret-never-used-at-runtime",
+  BETTER_AUTH_URL: "http://build.invalid",
+}
+
+export const env: Env =
+  process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD
+    ? BUILD_PLACEHOLDERS
+    : parseEnv(process.env)

@@ -7,6 +7,8 @@ const valid = {
   LMSTUDIO_HOST: "http://localhost:1234",
   LLM_MODEL: "openai/gpt-oss-20b",
   DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres",
+  BETTER_AUTH_SECRET: "a".repeat(32),
+  BETTER_AUTH_URL: "http://localhost:3000",
 }
 
 describe("parseEnv", () => {
@@ -41,6 +43,12 @@ describe("parseEnv", () => {
     expect(() =>
       parseEnv({ ...valid, DATABASE_URL: "mysql://localhost/db" }),
     ).toThrow(/DATABASE_URL/)
+  })
+
+  it("rejects a short auth secret", () => {
+    expect(() => parseEnv({ ...valid, BETTER_AUTH_SECRET: "short" })).toThrow(
+      /BETTER_AUTH_SECRET/,
+    )
   })
 
   it("rejects an empty model name", () => {

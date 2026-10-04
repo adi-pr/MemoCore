@@ -11,10 +11,15 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { AccountMenu } from "@/components/shell/account-menu"
 import { NavMain } from "@/components/shell/nav-main"
 import { ThemeMenu } from "@/components/shell/theme-menu"
 
-export function AppSidebar() {
+type AppSidebarProps = {
+  user: { name: string; email: string } | null
+}
+
+export function AppSidebar({ user }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -39,6 +44,11 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <ThemeMenu />
           </SidebarMenuItem>
+          {user && (
+            <SidebarMenuItem>
+              <AccountMenu name={user.name} email={user.email} />
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

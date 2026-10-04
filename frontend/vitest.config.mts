@@ -19,6 +19,8 @@ export default defineConfig({
       LMSTUDIO_HOST: "http://lmstudio.test",
       LLM_MODEL: "test-model",
       DATABASE_URL: "postgres://test:test@localhost:5432/test",
+      BETTER_AUTH_SECRET: "test-secret-that-is-at-least-32-characters",
+      BETTER_AUTH_URL: "http://localhost:3000",
     },
   },
 })

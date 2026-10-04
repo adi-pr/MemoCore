@@ -64,6 +64,10 @@ npm run db:generate -- --name <change>   # after editing db/*.ts
 npm run db:migrate                        # apply pending migrations
 ```
 
+## Auth
+
+MemoCore has exactly one account. Better Auth handles email and password sign-in, and a database hook rejects creating a user once one exists. Sessions last 30 days and refresh daily while you use the app.
+
 ## Components
 
 `components/ui` holds shadcn components and `components/ai-elements` holds AI Elements. Add more with `npx shadcn@latest add <name>` or `npx ai-elements@latest add <name>`.
