@@ -2,11 +2,13 @@ import { FolderGit2 } from "lucide-react"
 
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { AddRepositoryDialog } from "@/components/repositories/add-repository-dialog"
 import { RepositoriesError } from "@/components/repositories/repositories-error"
 import { RepositoryCard } from "@/components/repositories/repository-card"
 import { api } from "@/lib/api/client"
@@ -39,6 +41,9 @@ export async function RepositoryList() {
             Add a GitHub repository to index its Markdown.
           </EmptyDescription>
         </EmptyHeader>
+        <EmptyContent>
+          <AddRepositoryDialog />
+        </EmptyContent>
       </Empty>
     )
   }
