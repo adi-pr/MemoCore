@@ -1,14 +1,18 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel
+
+
+SyncJobStatus = Literal["pending", "running", "completed", "failed"]
 
 
 class SyncJobResponse(BaseModel):
     id: UUID
     repository_id: UUID
 
-    status: str
+    status: SyncJobStatus
     commit_sha: str | None
 
     files_discovered: int

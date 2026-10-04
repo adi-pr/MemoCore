@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, HttpUrl
 
+from app.schema.sync_jobs import SyncJobResponse
+
 
 class RepositoryCreate(BaseModel):
 
@@ -59,3 +61,5 @@ class RepositoryResponse(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+    latest_sync_job: SyncJobResponse | None

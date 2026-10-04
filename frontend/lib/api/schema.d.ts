@@ -220,6 +220,7 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            latest_sync_job: components["schemas"]["SyncJobResponse"] | null;
         };
         /** RepositoryUpdate */
         RepositoryUpdate: {
@@ -273,8 +274,11 @@ export interface components {
              * Format: uuid
              */
             repository_id: string;
-            /** Status */
-            status: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "completed" | "failed";
             /** Commit Sha */
             commit_sha: string | null;
             /** Files Discovered */

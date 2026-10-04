@@ -1,6 +1,33 @@
+from typing import Any
 from uuid import UUID
 
 from app.db.supabase import get_supabase
+
+
+def _select_with_latest_sync_job(supabase):
+    # Embeds each repository's most recent sync job in one query.
+    return (
+        supabase
+        .table("repositories")
+        .select("*, sync_jobs(*)")
+        .order(
+            "created_at",
+            desc=True,
+            foreign_table="sync_jobs",
+        )
+        .limit(
+            1,
+            foreign_table="sync_jobs",
+        )
+    )
+
+
+def with_latest_sync_job(row: dict[str, Any]) -> dict[str, Any]:
+    """Replace the embedded sync_jobs list with latest_sync_job."""
+    result = dict(row)
+    jobs = result.pop("sync_jobs", None) or []
+    result["latest_sync_job"] = jobs[0] if jobs else None
+    return result
 
 def create_repository(
     provider: str,
@@ -31,15 +58,14 @@ def create_repository(
             "Failed to create repository"
         )
 
-    return response.data[0]
+    # A new repository has no sync jobs yet.
+    return with_latest_sync_job(response.data[0])
 
 def get_repositories():
     supabase = get_supabase()
 
     response = (
-        supabase
-        .table("repositories")
-        .select("*")
+        _select_with_latest_sync_job(supabase)
         .order(
             "created_at",
             desc=True,
@@ -47,7 +73,10 @@ def get_repositories():
         .execute()
     )
 
-    return response.data
+    return [
+        with_latest_sync_job(row)
+        for row in response.data
+    ]
 
 def get_repository(
     repository_id: UUID,
@@ -55,9 +84,7 @@ def get_repository(
     supabase = get_supabase()
 
     response = (
-        supabase
-        .table("repositories")
-        .select("*")
+        _select_with_latest_sync_job(supabase)
         .eq(
             "id",
             str(repository_id),
@@ -68,7 +95,7 @@ def get_repository(
     if not response.data:
         return None
 
-    return response.data[0]
+    return with_latest_sync_job(response.data[0])
 
 def update_repository(
     repository_id: UUID,
@@ -106,7 +133,8 @@ def update_repository(
     if not response.data:
         return None
 
-    return response.data[0]
+    # Re-read so the response includes the latest sync job.
+    return get_repository(repository_id)
 
 def deactivate_repository(
     repository_id: UUID,
@@ -129,7 +157,7 @@ def deactivate_repository(
     if not response.data:
         return None
 
-    return response.data[0]
+    return get_repository(repository_id)
 
 def get_repository_by_full_name(
     provider: str,
