@@ -35,15 +35,25 @@ Server variables are validated with zod in `lib/env.ts` when the server starts (
 
 ## Scripts
 
-| Script                                     | Purpose                                                                                                                    |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `dev` / `build` / `start`                  | Next.js                                                                                                                    |
-| `lint`                                     | ESLint                                                                                                                     |
-| `typecheck`                                | TypeScript without emitting                                                                                                |
-| `test` / `test:watch`                      | Vitest with Testing Library and jsdom, once or in watch mode                                                               |
-| `format` / `format:check`                  | Prettier                                                                                                                   |
-| `api:types`                                | Generate `lib/api/schema.d.ts` from the running backend's OpenAPI schema (uses `API_URL`, default `http://localhost:8000`) |
-| `db:generate` / `db:migrate` / `db:studio` | Drizzle Kit, using the schema in `db/schema.ts`                                                                            |
+| Script                                     | Purpose                                                                                        |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `dev` / `build` / `start`                  | Next.js                                                                                        |
+| `lint`                                     | ESLint                                                                                         |
+| `typecheck`                                | TypeScript without emitting                                                                    |
+| `test` / `test:watch`                      | Vitest with Testing Library and jsdom, once or in watch mode                                   |
+| `format` / `format:check`                  | Prettier                                                                                       |
+| `api:types`                                | Generate `lib/api/schema.d.ts` from the backend code (no running server needed; requires `uv`) |
+| `db:generate` / `db:migrate` / `db:studio` | Drizzle Kit, using the schema in `db/schema.ts`                                                |
+
+## Backend API
+
+`lib/api/client.ts` exports `api`, an `openapi-fetch` client typed from `lib/api/schema.d.ts`. It's server-only, so the browser never calls the backend directly. Wrap calls in `unwrap()` to get the data or an `ApiError` carrying the backend's message:
+
+```ts
+const repositories = await unwrap(api.GET("/repositories"))
+```
+
+Run `npm run api:types` after changing backend routes or models and commit the regenerated schema.
 
 ## Components
 
