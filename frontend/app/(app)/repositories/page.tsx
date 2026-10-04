@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
-import { FolderGit2 } from "lucide-react"
+import { Suspense } from "react"
 
 import { PageHeader } from "@/components/shell/page-header"
-import { PagePlaceholder } from "@/components/shell/page-placeholder"
+import { RepositoryList } from "@/components/repositories/repository-list"
+import { RepositoryListSkeleton } from "@/components/repositories/repository-list-skeleton"
 
 export const metadata: Metadata = { title: "Repositories · MemoCore" }
 
@@ -10,11 +11,11 @@ export default function RepositoriesPage() {
   return (
     <>
       <PageHeader title="Repositories" />
-      <PagePlaceholder
-        icon={FolderGit2}
-        title="No repositories yet"
-        description="Repositories you index will appear here."
-      />
+      <div className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-6">
+        <Suspense fallback={<RepositoryListSkeleton />}>
+          <RepositoryList />
+        </Suspense>
+      </div>
     </>
   )
 }
