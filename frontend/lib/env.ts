@@ -1,0 +1,27 @@
+import "server-only"
+import { z } from "zod"
+
+// Base URLs are stored without a trailing slash so paths can be appended.
+const baseUrl = z.url().transform((url) => url.replace(/\/+$/, ""))
+
+const envSchema = z.object({
+  API_URL: baseUrl,
+  LMSTUDIO_HOST: baseUrl,
+  LLM_MODEL: z.string().min(1),
+})
+
+export type Env = z.infer<typeof envSchema>
+
+export function parseEnv(source: Record<string, string | undefined>): Env {
+  const result = envSchema.safeParse(source)
+
+  if (!result.success) {
+    throw new Error(
+      `Invalid environment variables:\n${z.prettifyError(result.error)}`,
+    )
+  }
+
+  return result.data
+}
+
+export const env = parseEnv(process.env)

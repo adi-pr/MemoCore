@@ -22,6 +22,8 @@ npm run dev
 
 The app runs on http://localhost:3000.
 
+Server variables are validated with zod in `lib/env.ts` when the server starts (`instrumentation.ts`). A missing or invalid variable stops startup with a list of what's wrong. `next build` doesn't need them.
+
 | Variable             | Purpose                                            |
 | -------------------- | -------------------------------------------------- |
 | `API_URL`            | FastAPI backend                                    |
