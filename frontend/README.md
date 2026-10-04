@@ -68,6 +68,10 @@ npm run db:migrate                        # apply pending migrations
 
 MemoCore has exactly one account. Better Auth handles email and password sign-in, and a database hook rejects creating a user once one exists. Sessions last 30 days and refresh daily while you use the app.
 
+On first run, with no account in the database, every page leads to `/setup`, where you create the account. After that `/setup` redirects to sign in.
+
+`proxy.ts` sends visitors without a session cookie to `/sign-in?next=<page>` (API routes get a 401). It only checks that the cookie exists; the app layout verifies the session with `requireSession()`, and Server Actions that change data should call it too.
+
 ## Components
 
 `components/ui` holds shadcn components and `components/ai-elements` holds AI Elements. Add more with `npx shadcn@latest add <name>` or `npx ai-elements@latest add <name>`.

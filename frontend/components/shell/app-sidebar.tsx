@@ -16,7 +16,7 @@ import { NavMain } from "@/components/shell/nav-main"
 import { ThemeMenu } from "@/components/shell/theme-menu"
 
 type AppSidebarProps = {
-  user: { name: string; email: string } | null
+  user: { name: string; email: string }
 }
 
 export function AppSidebar({ user }: AppSidebarProps) {
@@ -44,11 +44,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
           <SidebarMenuItem>
             <ThemeMenu />
           </SidebarMenuItem>
-          {user && (
-            <SidebarMenuItem>
-              <AccountMenu name={user.name} email={user.email} />
-            </SidebarMenuItem>
-          )}
+          <SidebarMenuItem>
+            <AccountMenu name={user.name} email={user.email} />
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
