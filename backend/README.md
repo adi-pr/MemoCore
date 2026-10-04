@@ -1,9 +1,10 @@
 # MemoCore Backend
 
-FastAPI service that ingests Markdown from GitHub repositories and serves hybrid search over it.
+FastAPI service that ingests Markdown from GitHub repositories, serves hybrid search over it and streams answers generated from the results.
 
 - **Ingest:** a worker clones a repository over SSH, finds every `.md` file, splits it into heading-aware chunks and embeds each chunk with Ollama.
 - **Search:** dense (cosine over embeddings) and sparse (BM25) retrieval run in parallel. Their results are merged and reranked with a cross-encoder.
+- **Ask:** the top search results are passed as context to an LLM served by LM Studio, and the answer is streamed back as plain text.
 
 Data lives in Supabase (Postgres + pgvector). Search scoring runs in Python.
 
@@ -22,6 +23,7 @@ Each retriever returns `top_k × RERANK_CANDIDATE_MULTIPLIER` candidates. The re
 - Python 3.12+ and [uv](https://docs.astral.sh/uv/), or Docker
 - A Supabase project (hosted or self-hosted)
 - [Ollama](https://ollama.com) with the embedding model pulled: `ollama pull nomic-embed-text`
+- [LM Studio](https://lmstudio.ai) with the server running and `LLM_MODEL` loaded (only needed for `/ask/stream`)
 - A GitHub SSH deploy key with read access to the repositories you want to index
 
 ## Setup
@@ -52,16 +54,16 @@ cp .env.example .env
 | `SUPABASE_KEY` | required | Supabase **secret** key (`sb_secret_…`) |
 | `EMBEDDING_PROVIDER` | `ollama` | Embedding backend. Only `ollama` is supported |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama server for embeddings |
-| `LMSTUDIO_HOST` | `http://localhost:1234` | LM Studio server. Not used yet |
+| `LMSTUDIO_HOST` | `http://localhost:1234` | LM Studio server that generates answers (OpenAI-compatible API) |
 | `EMBEDDING_MODEL` | `nomic-embed-text` | Ollama embedding model |
 | `EMBEDDING_DIMENSION` | `768` | Must match the model and the database column |
-| `LLM_MODEL` | `gpt-4.1-mini` | Model for generated answers. Not used yet |
+| `LLM_MODEL` | `gpt-4.1-mini` | LM Studio model identifier for generated answers |
 | `CHUNK_SIZE` | `1000` | Maximum tokens per chunk |
 | `CHUNK_OVERLAP` | `200` | Chunk overlap. Not used yet |
 | `RETRIEVAL_TOP_K` | `5` | Default result count. Not used yet; searches pass `top_k` |
 | `RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L6-v2` | Hugging Face cross-encoder |
 | `RERANK_CANDIDATE_MULTIPLIER` | `4` | Candidates per retriever = `top_k ×` this |
-| `MODEL_TIMEOUT_SECONDS` | `60` | Timeout for Ollama requests |
+| `MODEL_TIMEOUT_SECONDS` | `60` | Timeout for Ollama and LM Studio requests. For streams it applies between chunks |
 | `GITHUB_DEPLOY_KEY_PATH` | `~/.ssh/memo_deploy_key` | SSH key the worker clones with. Read from the shell environment, not `.env`, when running locally; set for you in Docker |
 | `SYNC_POLL_SECONDS` | `10` | Docker only: seconds between worker runs |
 | `GITHUB_DEPLOY_KEY_FILE` | `~/.ssh/memo_deploy_key` | Docker only: host path of the deploy key |
@@ -121,6 +123,16 @@ curl -X POST localhost:8000/search \
   -d '{"query": "how do I deploy?", "top_k": 5, "repository_id": null}'
 ```
 
+**4. Ask.** Runs the same search, then streams the LLM's answer as `text/plain`. `repository_id` is also accepted as `knowledge_base_id`.
+
+```bash
+curl -N -X POST localhost:8000/ask/stream \
+  -H 'content-type: application/json' \
+  -d '{"question": "how do I deploy?", "top_k": 5, "repository_id": null}'
+```
+
+A failed search returns `500` and an unreachable LM Studio returns `502`, both before any text is sent. If LM Studio fails after streaming has started, the stream ends early and the error is logged.
+
 ### Endpoints
 
 | Method | Path | Description |
@@ -135,6 +147,7 @@ curl -X POST localhost:8000/search \
 | `GET` | `/repositories/{id}/sync-jobs` | List a repository's sync jobs |
 | `GET` | `/sync-jobs/{id}` | Get a sync job |
 | `POST` | `/search` | Hybrid search with reranking (`top_k` 1–50) |
+| `POST` | `/ask/stream` | Answer a question from search results, streamed as plain text |
 
 ## Development
 
@@ -143,7 +156,7 @@ uv sync
 uv run pytest
 ```
 
-Tests mock Ollama and the reranker, so they need no network or database.
+Tests mock Ollama, LM Studio and the reranker, so they need no network or database.
 
 ### Layout
 
@@ -153,7 +166,7 @@ app/
   core/             settings and logging
   db/repositories/  Supabase queries
   schema/           request and response models
-  services/         chunking, embeddings, search, reranker, git
+  services/         chunking, embeddings, search, reranker, retrieval, llm, prompt, git
   worker/sync.py    repository ingestion job
 migrations/init.sql database schema
 tests/
