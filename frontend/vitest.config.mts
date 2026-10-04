@@ -18,6 +18,7 @@ export default defineConfig({
       API_URL: "http://backend.test",
       LMSTUDIO_HOST: "http://lmstudio.test",
       LLM_MODEL: "test-model",
+      DATABASE_URL: "postgres://test:test@localhost:5432/test",
     },
   },
 })

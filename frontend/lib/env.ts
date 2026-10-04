@@ -12,6 +12,7 @@ const envSchema = z.object({
   API_URL: baseUrl,
   LMSTUDIO_HOST: baseUrl,
   LLM_MODEL: z.string().min(1),
+  DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 })
 
 export type Env = z.infer<typeof envSchema>

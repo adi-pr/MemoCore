@@ -55,6 +55,15 @@ const repositories = await unwrap(api.GET("/repositories"))
 
 Run `npm run api:types` after changing backend routes or models and commit the regenerated schema.
 
+## Database
+
+Drizzle manages the frontend's tables in their own Postgres schema, `app`, so they never touch the backend's tables in `public`. The schema is in `db/`, and migrations in `drizzle/` are committed.
+
+```bash
+npm run db:generate -- --name <change>   # after editing db/*.ts
+npm run db:migrate                        # apply pending migrations
+```
+
 ## Components
 
 `components/ui` holds shadcn components and `components/ai-elements` holds AI Elements. Add more with `npx shadcn@latest add <name>` or `npx ai-elements@latest add <name>`.

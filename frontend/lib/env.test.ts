@@ -6,6 +6,7 @@ const valid = {
   API_URL: "http://localhost:8000",
   LMSTUDIO_HOST: "http://localhost:1234",
   LLM_MODEL: "openai/gpt-oss-20b",
+  DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres",
 }
 
 describe("parseEnv", () => {
@@ -34,6 +35,12 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ ...valid, API_URL: "localhost:8000" })).toThrow(
       /API_URL/,
     )
+  })
+
+  it("rejects a non-Postgres database URL", () => {
+    expect(() =>
+      parseEnv({ ...valid, DATABASE_URL: "mysql://localhost/db" }),
+    ).toThrow(/DATABASE_URL/)
   })
 
   it("rejects an empty model name", () => {
