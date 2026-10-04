@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { RepositoryActionsMenu } from "@/components/repositories/repository-actions-menu"
 import { SyncStatusBadge } from "@/components/repositories/sync-status"
 import type { Repository, SyncJob } from "@/lib/api/types"
 import { formatDateTime, formatRelativeTime, shortSha } from "@/lib/format"
@@ -45,8 +46,9 @@ export function RepositoryCard({ repository, now }: RepositoryCardProps) {
             <span className="sr-only">(opens GitHub)</span>
           </a>
         </CardDescription>
-        <CardAction>
+        <CardAction className="flex items-center gap-1">
           <SyncStatusBadge job={job} />
+          <RepositoryActionsMenu repository={repository} />
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 text-sm text-muted-foreground">

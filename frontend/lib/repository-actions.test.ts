@@ -1,14 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { addRepository } from "@/lib/repository-actions"
+import {
+  addRepository,
+  setRepositoryActive,
+  updateRepository,
+} from "@/lib/repository-actions"
 
 const mocks = vi.hoisted(() => ({
   POST: vi.fn(),
+  PATCH: vi.fn(),
+  DELETE: vi.fn(),
   requireUser: vi.fn(),
   revalidatePath: vi.fn(),
 }))
 
-vi.mock("@/lib/api/client", () => ({ api: { POST: mocks.POST } }))
+vi.mock("@/lib/api/client", () => ({
+  api: { POST: mocks.POST, PATCH: mocks.PATCH, DELETE: mocks.DELETE },
+}))
 vi.mock("@/lib/session", () => ({ requireUser: mocks.requireUser }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }))
 
@@ -95,5 +103,102 @@ describe("addRepository", () => {
     const state = await addRepository(initial, form({ repository: "me/wiki" }))
 
     expect(state.formError).toBe("Could not reach the backend")
+  })
+})
+
+describe("updateRepository", () => {
+  const initialEdit = {
+    status: "idle" as const,
+    fieldErrors: {},
+    formError: null,
+  }
+  const params = { path: { repository_id: "repo-1" } }
+
+  it("validates the name and branch", async () => {
+    const state = await updateRepository(
+      "repo-1",
+      initialEdit,
+      form({ name: " ", branch: "bad branch" }),
+    )
+
+    expect(state.fieldErrors).toEqual({
+      name: "Enter a name up to 255 characters.",
+      branch: "Enter a valid branch name.",
+    })
+    expect(mocks.PATCH).not.toHaveBeenCalled()
+  })
+
+  it("saves trimmed values and refreshes the list", async () => {
+    mocks.PATCH.mockResolvedValue(respond(200, { id: "repo-1" }))
+
+    const state = await updateRepository(
+      "repo-1",
+      initialEdit,
+      form({ name: " Wiki ", branch: " docs " }),
+    )
+
+    expect(mocks.PATCH).toHaveBeenCalledWith("/repositories/{repository_id}", {
+      params,
+      body: { name: "Wiki", default_branch: "docs" },
+    })
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/repositories")
+    expect(state.status).toBe("success")
+  })
+
+  it("shows backend errors", async () => {
+    mocks.PATCH.mockResolvedValue(
+      respond(404, { detail: "Repository not found" }),
+    )
+
+    const state = await updateRepository(
+      "repo-1",
+      initialEdit,
+      form({ name: "Wiki", branch: "main" }),
+    )
+
+    expect(state.formError).toBe("Repository not found")
+  })
+})
+
+describe("setRepositoryActive", () => {
+  const params = { path: { repository_id: "repo-1" } }
+
+  it("deactivates through DELETE", async () => {
+    mocks.DELETE.mockResolvedValue(respond(200, { id: "repo-1" }))
+
+    expect(await setRepositoryActive("repo-1", false)).toEqual({ error: null })
+    expect(mocks.DELETE).toHaveBeenCalledWith("/repositories/{repository_id}", {
+      params,
+    })
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/repositories")
+  })
+
+  it("reactivates through PATCH", async () => {
+    mocks.PATCH.mockResolvedValue(respond(200, { id: "repo-1" }))
+
+    await setRepositoryActive("repo-1", true)
+
+    expect(mocks.PATCH).toHaveBeenCalledWith("/repositories/{repository_id}", {
+      params,
+      body: { is_active: true },
+    })
+  })
+
+  it("returns backend errors", async () => {
+    mocks.DELETE.mockRejectedValue(new TypeError("fetch failed"))
+
+    expect(await setRepositoryActive("repo-1", false)).toEqual({
+      error: "Could not reach the backend",
+    })
+    expect(mocks.revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it("checks the session first", async () => {
+    mocks.requireUser.mockRejectedValue(new Error("NEXT_REDIRECT /sign-in"))
+
+    await expect(setRepositoryActive("repo-1", false)).rejects.toThrow(
+      "NEXT_REDIRECT",
+    )
+    expect(mocks.DELETE).not.toHaveBeenCalled()
   })
 })

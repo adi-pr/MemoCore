@@ -82,3 +82,86 @@ export async function addRepository(
     values: { repository: "", branch: "main" },
   }
 }
+
+export type EditRepositoryState = {
+  status: "idle" | "error" | "success"
+  fieldErrors: { name?: string; branch?: string }
+  formError: string | null
+}
+
+export async function updateRepository(
+  repositoryId: string,
+  _previous: EditRepositoryState,
+  formData: FormData,
+): Promise<EditRepositoryState> {
+  await requireUser()
+
+  const name = String(formData.get("name") ?? "").trim()
+  const branch = String(formData.get("branch") ?? "").trim()
+  const fieldErrors: EditRepositoryState["fieldErrors"] = {}
+
+  if (!name || name.length > 255) {
+    fieldErrors.name = "Enter a name up to 255 characters."
+  }
+
+  if (!isValidBranch(branch)) {
+    fieldErrors.branch = "Enter a valid branch name."
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { status: "error", fieldErrors, formError: null }
+  }
+
+  try {
+    await unwrap(
+      api.PATCH("/repositories/{repository_id}", {
+        params: { path: { repository_id: repositoryId } },
+        body: { name, default_branch: branch },
+      }),
+    )
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { status: "error", fieldErrors: {}, formError: error.message }
+    }
+
+    throw error
+  }
+
+  revalidatePath("/repositories")
+
+  return { status: "success", fieldErrors: {}, formError: null }
+}
+
+/**
+ * Deactivating keeps the indexed data but stops syncing and removes the
+ * repository from search; reactivating brings it back.
+ */
+export async function setRepositoryActive(
+  repositoryId: string,
+  active: boolean,
+): Promise<{ error: string | null }> {
+  await requireUser()
+
+  const params = { path: { repository_id: repositoryId } }
+
+  try {
+    await unwrap(
+      active
+        ? api.PATCH("/repositories/{repository_id}", {
+            params,
+            body: { is_active: true },
+          })
+        : api.DELETE("/repositories/{repository_id}", { params }),
+    )
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { error: error.message }
+    }
+
+    throw error
+  }
+
+  revalidatePath("/repositories")
+
+  return { error: null }
+}
