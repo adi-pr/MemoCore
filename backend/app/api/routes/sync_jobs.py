@@ -2,11 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.db.repositories.sync_jobs import (
-    create_sync_job,
-    get_sync_job,
-    get_sync_jobs_for_repository,
-)
+from app.db.repositories import sync_jobs as sync_job_store
 
 from app.schema.sync_jobs import SyncJobResponse
 
@@ -20,11 +16,11 @@ router = APIRouter(
     response_model=SyncJobResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_sync(
+def create_sync_job(
     repository_id: UUID,
 ):
     try:
-        return create_sync_job(
+        return sync_job_store.create_sync_job(
             repository_id
         )
 
@@ -41,7 +37,7 @@ def create_sync(
 def list_sync_jobs(
     repository_id: UUID,
 ):
-    return get_sync_jobs_for_repository(
+    return sync_job_store.get_sync_jobs_for_repository(
         repository_id
     )
 
@@ -49,10 +45,10 @@ def list_sync_jobs(
     "/sync-jobs/{job_id}",
     response_model=SyncJobResponse,
 )
-def get_sync_job_route(
+def get_sync_job(
     job_id: UUID,
 ):
-    job = get_sync_job(job_id)
+    job = sync_job_store.get_sync_job(job_id)
 
     if not job:
         raise HTTPException(

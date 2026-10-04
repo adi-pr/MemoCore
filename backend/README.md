@@ -158,6 +158,14 @@ uv run pytest
 
 Tests mock Ollama, LM Studio and the reranker, so they need no network or database.
 
+### OpenAPI schema
+
+```bash
+uv run python -m app.openapi > openapi.json
+```
+
+Prints the schema without starting the server or reading `.env`. The frontend's `npm run api:types` uses it to generate TypeScript types. Operation ids are the route function names, so keep those unique and descriptive.
+
 ### Layout
 
 ```

@@ -8,13 +8,7 @@ from app.schema.repositories import (
     RepositoryUpdate,
 )
 
-from app.services.repositories import (
-    create_repository,
-    get_repositories,
-    get_repository,
-    update_repository,
-    deactivate_repository,
-)
+from app.services import repositories as repository_service
 
 router = APIRouter(tags=["Repositories"],)
 
@@ -23,11 +17,11 @@ router = APIRouter(tags=["Repositories"],)
     response_model=RepositoryResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create(
+def create_repository(
     data: RepositoryCreate,
 ):
     try:
-        return create_repository(data)
+        return repository_service.create_repository(data)
 
     except ValueError as exc:
         raise HTTPException(
@@ -40,16 +34,16 @@ def create(
     response_model=list[RepositoryResponse],
 )
 def list_repositories():
-    return get_repositories()
+    return repository_service.get_repositories()
 
 @router.get(
     "/{repository_id}",
     response_model=RepositoryResponse,
 )
-def get(
+def get_repository(
     repository_id: UUID,
 ):
-    repository = get_repository(
+    repository = repository_service.get_repository(
         repository_id
     )
 
@@ -65,11 +59,11 @@ def get(
     "/{repository_id}",
     response_model=RepositoryResponse,
 )
-def update(
+def update_repository(
     repository_id: UUID,
     data: RepositoryUpdate,
 ):
-    repository = update_repository(
+    repository = repository_service.update_repository(
         repository_id,
         data,
     )
@@ -86,10 +80,10 @@ def update(
     "/{repository_id}",
     response_model=RepositoryResponse,
 )
-def delete(
+def deactivate_repository(
     repository_id: UUID,
 ):
-    repository = deactivate_repository(
+    repository = repository_service.deactivate_repository(
         repository_id
     )
 
