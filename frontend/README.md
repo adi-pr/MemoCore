@@ -9,7 +9,7 @@ Next.js app for chatting with your knowledge base. The Next.js server runs the c
 - AI Elements and shadcn/ui (Radix) on Tailwind CSS v4, with Streamdown for streamed Markdown
 - TanStack Query for backend data
 - `openapi-fetch` with types generated from the backend's OpenAPI schema
-- Better Auth, Drizzle ORM on Postgres
+- Supabase (Auth and data) through `@supabase/ssr` and `@supabase/supabase-js`, server-side only
 - ESLint, Prettier, Vitest
 
 ## Setup
@@ -24,26 +24,24 @@ The app runs on http://localhost:3000.
 
 Server variables are validated with zod in `lib/env.ts` when the server starts (`instrumentation.ts`). A missing or invalid variable stops startup with a list of what's wrong. `next build` doesn't need them.
 
-| Variable             | Purpose                                            |
-| -------------------- | -------------------------------------------------- |
-| `API_URL`            | FastAPI backend                                    |
-| `LMSTUDIO_HOST`      | LM Studio server                                   |
-| `LLM_MODEL`          | LM Studio model identifier                         |
-| `DATABASE_URL`       | Postgres for auth and chat history                 |
-| `BETTER_AUTH_SECRET` | Session signing secret (`openssl rand -base64 32`) |
-| `BETTER_AUTH_URL`    | Public URL of this app                             |
+| Variable              | Purpose                                                               |
+| --------------------- | --------------------------------------------------------------------- |
+| `API_URL`             | FastAPI backend                                                       |
+| `LMSTUDIO_HOST`       | LM Studio server                                                      |
+| `LLM_MODEL`           | LM Studio model identifier                                            |
+| `SUPABASE_URL`        | Supabase API gateway (the same one the backend uses)                  |
+| `SUPABASE_SECRET_KEY` | Supabase secret key (`sb_secret_...`). Admin access, server-side only |
 
 ## Scripts
 
-| Script                                     | Purpose                                                                                        |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `dev` / `build` / `start`                  | Next.js                                                                                        |
-| `lint`                                     | ESLint                                                                                         |
-| `typecheck`                                | TypeScript without emitting                                                                    |
-| `test` / `test:watch`                      | Vitest with Testing Library and jsdom, once or in watch mode                                   |
-| `format` / `format:check`                  | Prettier                                                                                       |
-| `api:types`                                | Generate `lib/api/schema.d.ts` from the backend code (no running server needed; requires `uv`) |
-| `db:generate` / `db:migrate` / `db:studio` | Drizzle Kit, using the schema in `db/schema.ts`                                                |
+| Script                    | Purpose                                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| `dev` / `build` / `start` | Next.js                                                                                        |
+| `lint`                    | ESLint                                                                                         |
+| `typecheck`               | TypeScript without emitting                                                                    |
+| `test` / `test:watch`     | Vitest with Testing Library and jsdom, once or in watch mode                                   |
+| `format` / `format:check` | Prettier                                                                                       |
+| `api:types`               | Generate `lib/api/schema.d.ts` from the backend code (no running server needed; requires `uv`) |
 
 ## Backend API
 
@@ -55,22 +53,17 @@ const repositories = await unwrap(api.GET("/repositories"))
 
 Run `npm run api:types` after changing backend routes or models and commit the regenerated schema.
 
-## Database
-
-Drizzle manages the frontend's tables in their own Postgres schema, `app`, so they never touch the backend's tables in `public`. The schema is in `db/`, and migrations in `drizzle/` are committed.
-
-```bash
-npm run db:generate -- --name <change>   # after editing db/*.ts
-npm run db:migrate                        # apply pending migrations
-```
-
 ## Auth
 
-MemoCore has exactly one account. Better Auth handles email and password sign-in, and a database hook rejects creating a user once one exists. Sessions last 30 days and refresh daily while you use the app.
+MemoCore has exactly one account, stored in Supabase Auth and tagged with `app_metadata.memocore_owner`. Users can't edit `app_metadata`, so other accounts on the same Supabase can't sign in.
 
-On first run, with no account in the database, every page leads to `/setup`, where you create the account. After that `/setup` redirects to sign in.
+On first run, with no owner account, every page leads to `/setup`. It creates the account with the admin API (email confirmed, no SMTP needed) and signs you in. After that `/setup` redirects to sign in.
 
-`proxy.ts` sends visitors without a session cookie to `/sign-in?next=<page>` (API routes get a 401). It only checks that the cookie exists; the app layout verifies the session with `requireSession()`, and Server Actions that change data should call it too.
+The browser never talks to Supabase. Sessions are cookies managed by `@supabase/ssr`:
+
+- `proxy.ts` refreshes the session on every request and sends signed-out visitors to `/sign-in?next=<page>` (API routes get a 401).
+- `requireUser()` in `lib/session.ts` verifies the user in pages and layouts. Server Actions that change data should call it too.
+- `supabaseAdmin` in `lib/supabase/server.ts` uses the secret key and bypasses row level security. Only use it after `requireUser()`.
 
 ## Components
 

@@ -13,11 +13,9 @@ const envSchema = z.object({
   API_URL: baseUrl,
   LMSTUDIO_HOST: baseUrl,
   LLM_MODEL: z.string().min(1),
-  DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
-  BETTER_AUTH_SECRET: z
-    .string()
-    .min(32, "Use at least 32 characters: openssl rand -base64 32"),
-  BETTER_AUTH_URL: baseUrl,
+  SUPABASE_URL: baseUrl,
+  // Secret key (sb_secret_...): admin access, so it must stay server-side.
+  SUPABASE_SECRET_KEY: z.string().min(1),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -41,9 +39,8 @@ const BUILD_PLACEHOLDERS: Env = {
   API_URL: "http://build.invalid",
   LMSTUDIO_HOST: "http://build.invalid",
   LLM_MODEL: "build-placeholder",
-  DATABASE_URL: "postgres://build.invalid/build",
-  BETTER_AUTH_SECRET: "build-placeholder-secret-never-used-at-runtime",
-  BETTER_AUTH_URL: "http://build.invalid",
+  SUPABASE_URL: "http://build.invalid",
+  SUPABASE_SECRET_KEY: "build-placeholder",
 }
 
 export const env: Env =

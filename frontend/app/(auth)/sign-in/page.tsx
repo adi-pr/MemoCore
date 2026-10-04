@@ -6,7 +6,7 @@ import { AuthCard } from "@/components/auth/auth-card"
 import { SignInForm } from "@/components/auth/sign-in-form"
 import { hasAccount } from "@/lib/auth"
 import { safeRedirectPath } from "@/lib/redirects"
-import { getSession } from "@/lib/session"
+import { getUser } from "@/lib/session"
 
 export const metadata: Metadata = { title: "Sign in · MemoCore" }
 
@@ -22,7 +22,7 @@ export default async function SignInPage({
 
   const { next } = await searchParams
 
-  if (await getSession()) {
+  if (await getUser()) {
     redirect(safeRedirectPath(next))
   }
 

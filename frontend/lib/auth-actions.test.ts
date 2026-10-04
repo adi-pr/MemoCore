@@ -1,30 +1,31 @@
-import { APIError } from "better-auth/api"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { completeSetup, signIn, signOut } from "@/lib/auth-actions"
 
+const owner = { id: "1", app_metadata: { memocore_owner: true } }
+const stranger = { id: "2", app_metadata: {} }
+
 const mocks = vi.hoisted(() => ({
-  signInEmail: vi.fn(),
-  signUpEmail: vi.fn(),
+  signInWithPassword: vi.fn(),
   signOut: vi.fn(),
+  createUser: vi.fn(),
+  hasAccount: vi.fn(),
   redirect: vi.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT ${path}`)
   }),
 }))
 
-vi.mock("@/lib/auth", () => ({
-  auth: {
-    api: {
-      signInEmail: mocks.signInEmail,
-      signUpEmail: mocks.signUpEmail,
+vi.mock("@/lib/supabase/server", () => ({
+  createAuthClient: async () => ({
+    auth: {
+      signInWithPassword: mocks.signInWithPassword,
       signOut: mocks.signOut,
     },
-  },
+  }),
+  supabaseAdmin: { auth: { admin: { createUser: mocks.createUser } } },
 }))
-vi.mock("next/headers", () => ({ headers: async () => new Headers() }))
+vi.mock("@/lib/auth", () => ({ hasAccount: mocks.hasAccount }))
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }))
-
-const initial = { error: null, email: "" }
 
 function form(fields: Record<string, string>) {
   const data = new FormData()
@@ -32,27 +33,30 @@ function form(fields: Record<string, string>) {
   return data
 }
 
+function authError(code: string, message: string) {
+  return { data: { user: null, session: null }, error: { code, message } }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
 describe("signIn", () => {
-  it("asks for missing fields without calling Better Auth", async () => {
+  const initial = { error: null, email: "" }
+
+  it("asks for missing fields without calling Supabase", async () => {
     const state = await signIn(initial, form({ email: " me@example.com " }))
 
     expect(state).toEqual({
       error: "Enter your email and password.",
       email: "me@example.com",
     })
-    expect(mocks.signInEmail).not.toHaveBeenCalled()
+    expect(mocks.signInWithPassword).not.toHaveBeenCalled()
   })
 
-  it("returns Better Auth's error and keeps the email", async () => {
-    mocks.signInEmail.mockRejectedValue(
-      APIError.from("UNAUTHORIZED", {
-        code: "INVALID_EMAIL_OR_PASSWORD",
-        message: "Invalid email or password",
-      }),
+  it("reports wrong credentials and keeps the email", async () => {
+    mocks.signInWithPassword.mockResolvedValue(
+      authError("invalid_credentials", "Invalid login credentials"),
     )
 
     const state = await signIn(
@@ -66,48 +70,73 @@ describe("signIn", () => {
     })
   })
 
+  it("passes other Supabase errors through", async () => {
+    mocks.signInWithPassword.mockResolvedValue(
+      authError("over_request_rate_limit", "Too many requests"),
+    )
+
+    const state = await signIn(
+      initial,
+      form({ email: "me@example.com", password: "password" }),
+    )
+
+    expect(state.error).toBe("Too many requests")
+  })
+
+  it("rejects other accounts on the same Supabase", async () => {
+    mocks.signInWithPassword.mockResolvedValue({
+      data: { user: stranger },
+      error: null,
+    })
+
+    const state = await signIn(
+      initial,
+      form({ email: "other@example.com", password: "password" }),
+    )
+
+    expect(state.error).toBe("Invalid email or password")
+    expect(mocks.signOut).toHaveBeenCalled()
+  })
+
   it("redirects to the requested page after signing in", async () => {
-    mocks.signInEmail.mockResolvedValue({})
+    mocks.signInWithPassword.mockResolvedValue({
+      data: { user: owner },
+      error: null,
+    })
 
     await expect(
       signIn(
         initial,
         form({
           email: "me@example.com",
-          password: "correct-password",
+          password: "correct-horse",
           next: "/repositories",
         }),
       ),
     ).rejects.toThrow("NEXT_REDIRECT /repositories")
 
-    expect(mocks.signInEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: { email: "me@example.com", password: "correct-password" },
-      }),
-    )
+    expect(mocks.signInWithPassword).toHaveBeenCalledWith({
+      email: "me@example.com",
+      password: "correct-horse",
+    })
   })
 
   it("ignores redirects to other sites", async () => {
-    mocks.signInEmail.mockResolvedValue({})
+    mocks.signInWithPassword.mockResolvedValue({
+      data: { user: owner },
+      error: null,
+    })
 
     await expect(
       signIn(
         initial,
         form({
           email: "me@example.com",
-          password: "correct-password",
+          password: "correct-horse",
           next: "https://evil.example",
         }),
       ),
     ).rejects.toThrow("NEXT_REDIRECT /chat")
-  })
-
-  it("rethrows unexpected errors", async () => {
-    mocks.signInEmail.mockRejectedValue(new Error("database down"))
-
-    await expect(
-      signIn(initial, form({ email: "me@example.com", password: "password" })),
-    ).rejects.toThrow("database down")
   })
 })
 
@@ -119,7 +148,7 @@ describe("signOut", () => {
 })
 
 describe("completeSetup", () => {
-  const initialSetup = {
+  const initial = {
     fieldErrors: {},
     formError: null,
     values: { name: "", email: "" },
@@ -131,9 +160,18 @@ describe("completeSetup", () => {
     confirmPassword: "correct-horse",
   }
 
+  beforeEach(() => {
+    mocks.hasAccount.mockResolvedValue(false)
+    mocks.createUser.mockResolvedValue({ data: { user: owner }, error: null })
+    mocks.signInWithPassword.mockResolvedValue({
+      data: { user: owner },
+      error: null,
+    })
+  })
+
   it("reports each invalid field and keeps name and email", async () => {
     const state = await completeSetup(
-      initialSetup,
+      initial,
       form({
         name: " ",
         email: "not-an-email",
@@ -149,62 +187,55 @@ describe("completeSetup", () => {
       confirmPassword: "Passwords don't match.",
     })
     expect(state.values).toEqual({ name: "", email: "not-an-email" })
-    expect(mocks.signUpEmail).not.toHaveBeenCalled()
+    expect(mocks.createUser).not.toHaveBeenCalled()
   })
 
-  it("rejects mismatched passwords", async () => {
-    const state = await completeSetup(
-      initialSetup,
-      form({ ...valid, confirmPassword: "something-else" }),
-    )
-
-    expect(state.fieldErrors).toEqual({
-      confirmPassword: "Passwords don't match.",
-    })
-  })
-
-  it("creates the account with trimmed values and opens the app", async () => {
-    mocks.signUpEmail.mockResolvedValue({})
-
-    await expect(completeSetup(initialSetup, form(valid))).rejects.toThrow(
+  it("creates a confirmed owner account, signs in and opens the app", async () => {
+    await expect(completeSetup(initial, form(valid))).rejects.toThrow(
       "NEXT_REDIRECT /chat",
     )
 
-    expect(mocks.signUpEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: {
-          name: "Ruben",
-          email: "me@example.com",
-          password: "correct-horse",
-        },
-      }),
-    )
+    expect(mocks.createUser).toHaveBeenCalledWith({
+      email: "me@example.com",
+      password: "correct-horse",
+      email_confirm: true,
+      user_metadata: { name: "Ruben" },
+      app_metadata: { memocore_owner: true },
+    })
+    expect(mocks.signInWithPassword).toHaveBeenCalledWith({
+      email: "me@example.com",
+      password: "correct-horse",
+    })
   })
 
-  it("sends you to sign in when an account already exists", async () => {
-    mocks.signUpEmail.mockRejectedValue(
-      APIError.from("FORBIDDEN", {
-        code: "ACCOUNT_EXISTS",
-        message: "MemoCore already has an account",
-      }),
-    )
+  it("sends you to sign in when the account already exists", async () => {
+    mocks.hasAccount.mockResolvedValue(true)
 
-    await expect(completeSetup(initialSetup, form(valid))).rejects.toThrow(
+    await expect(completeSetup(initial, form(valid))).rejects.toThrow(
       "NEXT_REDIRECT /sign-in",
     )
+    expect(mocks.createUser).not.toHaveBeenCalled()
   })
 
-  it("shows other Better Auth errors on the form", async () => {
-    mocks.signUpEmail.mockRejectedValue(
-      APIError.from("TOO_MANY_REQUESTS", {
-        code: "RATE_LIMITED",
-        message: "Too many requests",
-      }),
+  it("flags an email that another Supabase account uses", async () => {
+    mocks.createUser.mockResolvedValue(
+      authError("email_exists", "A user with this email already exists"),
     )
 
-    const state = await completeSetup(initialSetup, form(valid))
+    const state = await completeSetup(initial, form(valid))
 
-    expect(state.formError).toBe("Too many requests")
+    expect(state.fieldErrors.email).toMatch(/already has a Supabase account/)
+    expect(state.formError).toBeNull()
+  })
+
+  it("shows other Supabase errors on the form", async () => {
+    mocks.createUser.mockResolvedValue(
+      authError("unexpected_failure", "Database error creating new user"),
+    )
+
+    const state = await completeSetup(initial, form(valid))
+
+    expect(state.formError).toBe("Database error creating new user")
     expect(state.values).toEqual({ name: "Ruben", email: "me@example.com" })
   })
 })

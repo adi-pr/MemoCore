@@ -6,9 +6,8 @@ const valid = {
   API_URL: "http://localhost:8000",
   LMSTUDIO_HOST: "http://localhost:1234",
   LLM_MODEL: "openai/gpt-oss-20b",
-  DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres",
-  BETTER_AUTH_SECRET: "a".repeat(32),
-  BETTER_AUTH_URL: "http://localhost:3000",
+  SUPABASE_URL: "http://192.168.100.221:8000",
+  SUPABASE_SECRET_KEY: "sb_secret_example",
 }
 
 describe("parseEnv", () => {
@@ -39,15 +38,9 @@ describe("parseEnv", () => {
     )
   })
 
-  it("rejects a non-Postgres database URL", () => {
-    expect(() =>
-      parseEnv({ ...valid, DATABASE_URL: "mysql://localhost/db" }),
-    ).toThrow(/DATABASE_URL/)
-  })
-
-  it("rejects a short auth secret", () => {
-    expect(() => parseEnv({ ...valid, BETTER_AUTH_SECRET: "short" })).toThrow(
-      /BETTER_AUTH_SECRET/,
+  it("requires the Supabase secret key", () => {
+    expect(() => parseEnv({ ...valid, SUPABASE_SECRET_KEY: "" })).toThrow(
+      /SUPABASE_SECRET_KEY/,
     )
   })
 

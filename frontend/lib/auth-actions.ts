@@ -1,12 +1,14 @@
 "use server"
 
-import { isAPIError } from "better-auth/api"
-import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 
-import { auth } from "@/lib/auth"
+import { hasAccount } from "@/lib/auth"
+import { isOwner, OWNER_FLAG } from "@/lib/owner"
 import { safeRedirectPath } from "@/lib/redirects"
+import { createAuthClient, supabaseAdmin } from "@/lib/supabase/server"
+
+const INVALID_CREDENTIALS = "Invalid email or password"
 
 export type SignInState = {
   error: string | null
@@ -24,24 +26,34 @@ export async function signIn(
     return { error: "Enter your email and password.", email }
   }
 
-  try {
-    await auth.api.signInEmail({
-      body: { email, password },
-      headers: await headers(),
-    })
-  } catch (error) {
-    if (isAPIError(error)) {
-      return { error: error.message || "Sign in failed.", email }
-    }
+  const supabase = await createAuthClient()
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
 
-    throw error
+  if (error) {
+    return {
+      error:
+        error.code === "invalid_credentials"
+          ? INVALID_CREDENTIALS
+          : error.message || "Sign in failed.",
+      email,
+    }
+  }
+
+  // Another account on this Supabase: same message as a wrong password.
+  if (!isOwner(data.user)) {
+    await supabase.auth.signOut()
+    return { error: INVALID_CREDENTIALS, email }
   }
 
   redirect(safeRedirectPath(formData.get("next")))
 }
 
 export async function signOut() {
-  await auth.api.signOut({ headers: await headers() })
+  const supabase = await createAuthClient()
+  await supabase.auth.signOut()
   redirect("/sign-in")
 }
 
@@ -90,30 +102,46 @@ export async function completeSetup(
     return { fieldErrors, formError: null, values }
   }
 
-  try {
-    // Signs in automatically; nextCookies() sets the session cookie.
-    await auth.api.signUpEmail({
-      body: {
-        name: parsed.data.name,
-        email: parsed.data.email,
-        password: parsed.data.password,
-      },
-      headers: await headers(),
-    })
-  } catch (error) {
-    if (isAPIError(error)) {
-      if (error.body?.code === "ACCOUNT_EXISTS") {
-        redirect("/sign-in")
-      }
+  if (await hasAccount()) {
+    redirect("/sign-in")
+  }
 
-      return {
-        fieldErrors: {},
-        formError: error.message || "Setup failed.",
-        values,
-      }
+  const { name, email, password } = parsed.data
+
+  // The admin API confirms the email directly, so no SMTP is needed.
+  const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { name },
+    app_metadata: { [OWNER_FLAG]: true },
+  })
+
+  if (createError) {
+    return {
+      fieldErrors:
+        createError.code === "email_exists"
+          ? {
+              email:
+                "This email already has a Supabase account. Use a different one.",
+            }
+          : {},
+      formError:
+        createError.code === "email_exists"
+          ? null
+          : createError.message || "Setup failed.",
+      values,
     }
+  }
 
-    throw error
+  const supabase = await createAuthClient()
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
+
+  if (signInError) {
+    redirect("/sign-in")
   }
 
   redirect("/chat")
