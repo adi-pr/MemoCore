@@ -23,11 +23,14 @@ def get_all_embedded_chunks() -> list[dict[str, Any]]:
                 heading_path,
                 documents!inner(
                     repository_id,
-                    path
+                    path,
+                    repositories!inner(is_active)
                 )
             )
             """
         )
+        # Deactivated repositories drop out of search.
+        .eq("document_chunks.documents.repositories.is_active", True)
         .execute()
     )
 
@@ -78,10 +81,13 @@ def get_all_chunks() -> list[dict[str, Any]]:
             metadata,
             documents!inner(
                 repository_id,
-                path
+                path,
+                repositories!inner(is_active)
             )
             """
         )
+        # Deactivated repositories drop out of search.
+        .eq("documents.repositories.is_active", True)
         .execute()
     )
 
