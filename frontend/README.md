@@ -10,7 +10,7 @@ Next.js app for chatting with your knowledge base. The Next.js server runs the c
 - TanStack Query for backend data
 - `openapi-fetch` with types generated from the backend's OpenAPI schema
 - Better Auth, Drizzle ORM on Postgres
-- ESLint, Prettier
+- ESLint, Prettier, Vitest
 
 ## Setup
 
@@ -40,6 +40,7 @@ Server variables are validated with zod in `lib/env.ts` when the server starts (
 | `dev` / `build` / `start`                  | Next.js                                                                                                                    |
 | `lint`                                     | ESLint                                                                                                                     |
 | `typecheck`                                | TypeScript without emitting                                                                                                |
+| `test` / `test:watch`                      | Vitest with Testing Library and jsdom, once or in watch mode                                                               |
 | `format` / `format:check`                  | Prettier                                                                                                                   |
 | `api:types`                                | Generate `lib/api/schema.d.ts` from the running backend's OpenAPI schema (uses `API_URL`, default `http://localhost:8000`) |
 | `db:generate` / `db:migrate` / `db:studio` | Drizzle Kit, using the schema in `db/schema.ts`                                                                            |

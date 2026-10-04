@@ -2,7 +2,11 @@ import "server-only"
 import { z } from "zod"
 
 // Base URLs are stored without a trailing slash so paths can be appended.
-const baseUrl = z.url().transform((url) => url.replace(/\/+$/, ""))
+// The protocol check rejects "localhost:8000", which parses as a URL with
+// a "localhost:" scheme.
+const baseUrl = z
+  .url({ protocol: /^https?$/ })
+  .transform((url) => url.replace(/\/+$/, ""))
 
 const envSchema = z.object({
   API_URL: baseUrl,
