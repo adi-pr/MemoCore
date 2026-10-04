@@ -8,7 +8,11 @@ const eslintConfig = defineConfig([
   // shadcn and AI Elements code is copied from their registries. Patching
   // it is lost on re-add, so React Compiler findings there only warn.
   {
-    files: ["components/ui/**", "components/ai-elements/**"],
+    files: [
+      "components/ui/**",
+      "components/ai-elements/**",
+      "hooks/use-mobile.ts",
+    ],
     rules: {
       "react-hooks/refs": "warn",
       "react-hooks/set-state-in-effect": "warn",
