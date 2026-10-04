@@ -1,7 +1,8 @@
-dist/
-node_modules/
-.next/
-.turbo/
-coverage/
-pnpm-lock.yaml
-.pnpm-store/
+.next
+node_modules
+package-lock.json
+next-env.d.ts
+lib/api/schema.d.ts
+drizzle
+AGENTS.md
+CLAUDE.md
